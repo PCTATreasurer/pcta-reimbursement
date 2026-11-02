@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PCTA Reimbursement Request – Printable Form</title>
+<style>
+  * { box-sizing: border-box; }
+  body { margin: 0; background: #e5e7eb; color: #000; font: 14px/1.35 Arial, Helvetica, sans-serif; }
+  .bar { max-width: 8.5in; margin: 16px auto 0; padding: 0 12px; display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
+  .bar button { background: #1a56db; color: #fff; border: none; border-radius: 8px; padding: 14px 24px; font: bold 18px Arial, sans-serif; cursor: pointer; }
+  .bar span { color: #374151; }
+  .page { background: #fff; width: 8.5in; max-width: 100%; min-height: 11in; margin: 12px auto 24px; padding: 0.6in 0.65in; box-shadow: 0 1px 4px rgba(0,0,0,.2); }
+  h1 { font-size: 20px; text-align: center; margin: 0; }
+  h2 { font-size: 17px; text-align: center; margin: 2px 0 0; font-weight: normal; }
+  .fy { text-align: center; margin: 6px 0 16px; }
+  .reminder { border: 2px solid #000; padding: 8px 10px; font-weight: bold; text-align: center; margin-bottom: 16px; }
+  .payee { display: grid; grid-template-columns: 1.6in 1fr; row-gap: 8px; margin: 6px 0 18px; }
+  .payee div:nth-child(odd) { font-weight: bold; }
+  .payee div:nth-child(even) { border-bottom: 1px solid #000; min-height: 20px; }
+  .sect { font-weight: bold; margin-top: 8px; }
+  .instr { font-size: 12.5px; margin: 4px 0 8px; }
+  table { width: 100%; border-collapse: collapse; }
+  th, td { border: 1px solid #000; padding: 5px 6px; vertical-align: top; }
+  th { background: #f0f0f0; text-align: left; }
+  td.amt, th.amt { text-align: right; width: 1.1in; }
+  td.date { width: 1in; }
+  td.acct { width: 1.9in; }
+  tr.blank td { height: 26px; }
+  tr.total td { font-weight: bold; }
+  .sig { display: grid; grid-template-columns: 1fr 1.8in; column-gap: 0.3in; row-gap: 26px; margin-top: 34px; }
+  .sig div { border-top: 1px solid #000; padding-top: 3px; font-size: 12.5px; }
+  .foot { margin-top: 26px; font-size: 12px; color: #333; }
+  @media screen and (max-width: 600px) {
+    body { font-size: 13px; }
+    .page { padding: 18px 12px; min-height: 0; }
+    .payee { grid-template-columns: 1.1in 1fr; }
+    th, td { padding: 4px; }
+    td.date { width: auto; } td.acct { width: auto; } td.amt, th.amt { width: auto; }
+    .sig { grid-template-columns: 1fr 1fr; }
+  }
+  @media print {
+    body { background: #fff; }
+    .bar { display: none; }
+    .page { box-shadow: none; margin: 0; width: auto; min-height: 0; padding: 0; }
+    @page { size: letter; margin: 0.5in; }
+  }
+</style>
+</head>
+<body>
+<div class="bar" id="bar" style="display:none">
+  <button onclick="window.print()">Print this form</button>
+  <span>Sign and date it after printing.</span>
+</div>
+<div id="msg" style="max-width:8.5in;margin:24px auto;padding:0 12px;font-size:16px">Loading your form…</div>
+<div class="page" id="page" style="display:none">
+  <h1>Pike Classroom Teachers Association</h1>
+  <h2>Reimbursement Request</h2>
+  <div class="fy">Fiscal year <span id="fy"></span> &nbsp;·&nbsp; Request ID <span id="rid"></span></div>
+  <div class="reminder" id="reminder"></div>
+
+  <div class="sect">Please make check payable to:</div>
+  <div class="payee">
+    <div>Name:</div><div id="name"></div>
+    <div>Building:</div><div id="building"></div>
+    <div>Address:</div><div id="address"></div>
+    <div>City, State, Zip:</div><div id="csz"></div>
+  </div>
+
+  <div class="sect">EXPENSES:</div>
+  <div class="instr" id="instr"></div>
+  <table>
+    <thead><tr><th>Date</th><th>Explanation of Expenditure / Business Purpose</th><th>Account</th><th class="amt">Amount</th></tr></thead>
+    <tbody id="rows"></tbody>
+  </table>
+
+  <div class="sig">
+    <div>SIGNATURE</div><div>DATE</div>
+    <div>Approval #1</div><div>Date</div>
+    <div>Approval #2</div><div>Date</div>
+  </div>
+
+  <div class="foot" id="foot"></div>
+</div>
+
+<script>
+var API_URL = 'https://script.google.com/macros/s/AKfycbzekRUIB2DVAcJUZN_LXqqe_Wwk017spkO6aCRzJ5MWsrtpAyPs_3XFTdSfcjsURs8cmA/exec';
+var key = new URLSearchParams(location.search).get('v') || '';
+fetch(API_URL + '?api=voucher&v=' + encodeURIComponent(key), { credentials: 'omit', redirect: 'follow' })
+  .then(function (r) { return r.json(); })
+  .then(function (r) {
+    if (!r.ok) throw new Error(r.error);
+    render(r.data);
+    document.getElementById('msg').style.display = 'none';
+    document.getElementById('bar').style.display = '';
+    document.getElementById('page').style.display = '';
+    document.title = 'PCTA Reimbursement Request ' + r.data.id;
+  })
+  .catch(function (e) {
+    document.getElementById('msg').textContent = (e && e.message && e.message !== 'Failed to fetch') ? e.message :
+      'Your form could not load. Please check your connection and refresh the page.';
+  });
+
+function render(D) {
+function set(id, v) { document.getElementById(id).textContent = v == null ? '' : String(v); }
+function fmtDate(s) { var p = String(s).split('-'); return p.length === 3 ? Number(p[1]) + '/' + Number(p[2]) + '/' + p[0] : s; }
+set('fy', D.fiscalYear); set('rid', D.id); set('reminder', D.signedReminder);
+set('name', D.name); set('building', D.building); set('address', D.address); set('csz', D.csz);
+set('instr', 'Attach original receipts for all expenses. ' + D.pony + ' Or mail to ' + D.mailTo + '.');
+var tb = document.getElementById('rows');
+function addRow(cells, cls) {
+  var tr = document.createElement('tr'); if (cls) tr.className = cls;
+  cells.forEach(function (c) { var td = document.createElement('td'); td.textContent = c[0]; if (c[1]) td.className = c[1]; if (c[2]) td.colSpan = c[2]; tr.appendChild(td); });
+  tb.appendChild(tr);
+}
+var acct = D.category + (D.members ? ' (' + D.members + ' members)' : '');
+D.expenses.forEach(function (x) { addRow([[fmtDate(x.date), 'date'], [x.desc], [acct, 'acct'], ['$' + Number(x.amount).toFixed(2), 'amt']]); });
+for (var i = D.expenses.length; i < D.maxExpenses; i++) addRow([[' ', 'date'], [' '], [' ', 'acct'], [' ', 'amt']], 'blank');
+addRow([['Total Reimbursement Amount', '', 3], ['$' + D.total, 'amt']], 'total');
+set('foot', 'Submitted online as request ' + D.id + '. Keep a copy for your records.');
+}
+</script>
+</body>
+</html>
